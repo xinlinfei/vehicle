@@ -55,10 +55,10 @@ def accurate_place(card_img_hsv, limit1, limit2, color,cfg):
 				xr = j
 	return xl, xr, yh, yl
 
-
 def CaridDetect(car_pic):
 
 	# 加载图片
+	global cfg
 	img = cv2.imread(car_pic)
 	pic_hight, pic_width = img.shape[:2]
 
@@ -104,7 +104,6 @@ def CaridDetect(car_pic):
 	except ValueError:
 		image, contours, hierarchy = cv2.findContours(img_edge2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	contours = [cnt for cnt in contours if cv2.contourArea(cnt) > Min_Area]
-	
 	# 一一排除不是车牌的矩形区域，找到最小外接矩形的长宽比复合车牌条件的边缘检测到的物体
 	car_contours = []
 	for cnt in contours:
@@ -117,12 +116,12 @@ def CaridDetect(car_pic):
 		# 要求矩形区域长宽比在2到5.5之间，2到5.5是车牌的长宽比，其余的矩形排除 一般的比例是3.5
 		if wh_ratio > 2 and wh_ratio < 5.5:
 			car_contours.append(rect)
-			# box = cv2.boxPoints(rect)
-			# box = np.int0(box)
-			# oldimg = cv2.drawContours(oldimg, [box], 0, (0, 0, 255), 2)
-			# cv2.imshow("edge4", oldimg)
-			# print(rect)
-			# cv2.waitKey(0)
+			box = cv2.boxPoints(rect)
+			box = np.intp(box)
+			oldimg = cv2.drawContours(oldimg, [box], 0, (0, 0, 255), 2)
+			cv2.imshow("edge4", oldimg)
+			print(rect)
+			cv2.waitKey(0)
 	card_imgs = []
 
 	# 矩形区域可能是倾斜的矩形，需要矫正，以便使用颜色定位更加精确
@@ -171,9 +170,9 @@ def CaridDetect(car_pic):
 			point_limit(new_left_point)
 			card_img = dst[int(right_point[1]):int(heigth_point[1]), int(new_left_point[0]):int(right_point[0])]
 			card_imgs.append(card_img)
-	for carimg in card_imgs:
-		cv2.imshow("card", carimg)
-		cv2.waitKey(0)
+	# for carimg in card_imgs:
+	# 	cv2.imshow("card", carimg)
+	# 	cv2.waitKey(0)
 
 	# 开始使用颜色定位，排除不是车牌的矩形，目前只识别蓝、绿、黄车牌
 	colors = []
@@ -268,7 +267,7 @@ def CaridDetect(car_pic):
 	return roi,labels, card_color#定位的车牌图像、车牌颜色
 
 if __name__ == '__main__':
-	roi, label, color = CaridDetect("green.jpg")
+	roi, label, color = CaridDetect("2.jpg")
 	# roi, label, color = CaridDetect("2.jpg")
 	# roi, label,color = CaridDetect("green.jpg")
 	# print(len(roi), len(label), len(color))
