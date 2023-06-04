@@ -78,9 +78,9 @@ def GetCarid_possible(car_pic):#1.矩形区域，2.长宽比
 
 def GetCarid_possible_by_color(car_pic):
     car_imgs_possibly = GetCarid_possible(car_pic)
-    car_imgs = []
+    card_imgs = []
     colors = []
-    for car_index, card_img in enumerate(car_imgs_possibly):
+    for card_index, card_img in enumerate(car_imgs_possibly):
         green = yello = blue = black = white = 0
         card_img_hsv = cv2.cvtColor(card_img, cv2.COLOR_BGR2HSV)
         # 有转换失败的可能，原因来自于上面矫正矩形出错
@@ -120,18 +120,29 @@ def GetCarid_possible_by_color(car_pic):
             limit2 = 124  # 有的图片有色偏偏紫
         elif black + white >= card_img_count * 0.7:  # TODO
             color = "bw"
-        colors.append(color)
         if limit1 == 0:
             continue
-    # 以上为确定车牌颜色
+        colors.append(color)
+        # 以上为确定车牌颜色
+
+        xl, xr, yh, yl = tools.accurate_place(card_img_hsv, limit1, limit2, color, cfg)
+        if yl == yh and xl == xr:
+            continue
+        need_accurate = False
+        if yl >= yh:
+            yl = 0
+            yh = row_num
+            need_accurate = True
+        if xl >= xr:
+            xl = 0
+            xr = col_num
+            need_accurate = True
+        card_imgs.append(card_img[yl:yh, xl:xr] if color != "green" or yl < (yh - yl) // 4 else card_img[yl - (yh - yl) // 4:yh, xl:xr])
+    return card_imgs,colors
 
 
-
-    return car_imgs,colors
-
-
-
-imgs = GetCarid_possible('dataset/wA87271.jpg')
+imgs,colors= GetCarid_possible_by_color('dataset/wAUB816.jpg')
+print(len(imgs),len(colors))
 if imgs:
     for i, img in enumerate(imgs):
         cv2.imshow('car_id', img)
