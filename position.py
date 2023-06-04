@@ -16,8 +16,8 @@ def point_limit(point):
 		point[0] = 0
 	if point[1] < 0:
 		point[1] = 0
-		
-# 用于排序        
+
+#找到符合指定颜色范围和亮度条件的有效区域的边界位置
 def accurate_place(card_img_hsv, limit1, limit2, color,cfg):
 	row_num, col_num = card_img_hsv.shape[:2]
 	xl = col_num
@@ -134,15 +134,59 @@ def CaridDetect(car_pic):
 			# cv2.imshow("edge4", oldimg)
 			# print(rect)
 			# cv2.waitKey(0)
-	# print("[ INFo ] len(car_contours): {}".format(len(car_contours)))
-	# print("[ INFO ] 精确定位.")
+
+
+
+	car_imgs_test = []
+	for rect in car_contours:
+		center, size, angle = rect
+		print(angle)
+		# 提取矩形的宽度和高度
+		width = int(size[0])
+		height = int(size[1])
+
+
+		if rect[2] > -1 and rect[2] < 1:#创造角度，使得左高右低拿到正确的值
+			angle = 1
+		else:
+			angle = rect[2]
+		rect = (rect[0], (rect[1][0]+5, rect[1][1]+5), angle)
+		# 检查角度，确保在-90度到0度范围内
+		# if angle < -45:
+		# 	angle += 90
+		# elif angle > 45:
+		# 	angle -= 90
+
+		# 获取旋转矩形的旋转矩阵
+		M = cv2.getRotationMatrix2D(center, angle, 1.0)
+
+		# 计算输出图像的尺寸
+		cos = np.abs(M[0, 0])
+		sin = np.abs(M[0, 1])
+		new_width = int((height * sin) + (width * cos))
+		new_height = int((height * cos) + (width * sin))
+
+		# 调整旋转矩阵的平移距离
+		M[0, 2] += (new_width / 2) - center[0]
+		M[1, 2] += (new_height / 2) - center[1]
+
+		# 应用仿射变换
+		rotated = cv2.warpAffine(oldimg, M, (new_width, new_height), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+		car_imgs_test.append(rotated)
+	for img_test in car_imgs_test:
+		cv2.imshow("img_test", img_test)
+		cv2.waitKey(0)
+
+
+
+
 
 	card_imgs = []
 
-	# 矩形区域可能是倾斜的矩形，需要矫正，以便使用颜色定位
-	# 这个就是为什么我们不选择YOLO,SSD或其他的目标检测算法来检测车牌号的原因！！！（给自己偷懒找个台阶 :) )
+	# 矩形区域可能是倾斜的矩形，需要矫正，以便使用颜色定位更加精确
 	for rect in car_contours:
-		if rect[2] > -1 and rect[2] < 1:#创造角度，使得左、高、右、低拿到正确的值
+		#rect：（最小外接矩形的中心（x，y），（宽度，高度），旋转角度）
+		if rect[2] > -1 and rect[2] < 1:#创造角度，使得左高右低拿到正确的值
 			angle = 1
 		else:
 			angle = rect[2]
@@ -173,8 +217,6 @@ def CaridDetect(car_pic):
 			point_limit(left_point)
 			card_img = dst[int(left_point[1]):int(heigth_point[1]), int(left_point[0]):int(new_right_point[0])]
 			card_imgs.append(card_img)
-			#cv2.imshow("card", card_img)
-			#cv2.waitKey(0)
 		elif left_point[1] > right_point[1]: # 负角度
 			
 			new_left_point = [left_point[0], heigth_point[1]]
@@ -187,12 +229,16 @@ def CaridDetect(car_pic):
 			point_limit(new_left_point)
 			card_img = dst[int(right_point[1]):int(heigth_point[1]), int(new_left_point[0]):int(right_point[0])]
 			card_imgs.append(card_img)
-			#cv2.imshow("card", card_img)
-			#cv2.waitKey(0)
+	# for carimg in card_imgs:
+	# 	cv2.imshow("card", carimg)
+	# 	cv2.waitKey(0)
+	# print(len(card_imgs))
 
 	# 开始使用颜色定位，排除不是车牌的矩形，目前只识别蓝、绿、黄车牌
-
 	colors = []
+	roi = []
+	card_color = []
+	labels = []
 	for card_index,card_img in enumerate(card_imgs):
 		green = yello = blue = black = white = 0
 		card_img_hsv = cv2.cvtColor(card_img, cv2.COLOR_BGR2HSV)
@@ -273,12 +319,18 @@ def CaridDetect(car_pic):
 		card_imgs[card_index] = card_img[yl:yh, xl:xr] if color != "green" or yl < (yh-yl)//4 else card_img[yl-(yh-yl)//4:yh, xl:xr]
 
 
-		roi = card_img
-		card_color = color
-		labels = (int(right_point[1]), int(heigth_point[1]), int(left_point[0]), int(right_point[0]))
+		roi.append(card_img)
+		card_color.append(color)
+		labels.append((int(right_point[1]), int(heigth_point[1]), int(left_point[0]), int(right_point[0])))
 
 			
 	return roi,labels, card_color#定位的车牌图像、车牌颜色
 
 if __name__ == '__main__':
-	roi, label,color = CaridDetect("2.jpg")
+	# roi, label, color = CaridDetect("green.jpg")
+	roi, label, color = CaridDetect("2.jpg")
+	# roi, label,color = CaridDetect("green.jpg")
+	# print(len(roi), len(label), len(color))
+	# print(label[0])
+	# cv2.imshow("roi", roi[0])
+	# cv2.waitKey(0)

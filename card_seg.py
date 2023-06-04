@@ -6,7 +6,7 @@ import sys
 import os
 import json
 
-from car_id_detect import *
+from position import *
 from svm_train import *
 
 SZ = 20          #训练图片长宽
