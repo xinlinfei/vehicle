@@ -1,12 +1,13 @@
 import cv2
 import numpy as np
 import json
+import tools
 
 SZ = 20          # 训练图片长宽
 MAX_WIDTH = 1000 # 原始图片最大宽度
 Min_Area = 2000  # 车牌区域允许最大面积
 PROVINCE_START = 1000
-def CaridDetect(car_pic):
+def GetCarid_possible(car_pic):#1.矩形区域，2.长宽比
     # 加载图片
     global cfg
     img = cv2.imread(car_pic)
@@ -71,8 +72,67 @@ def CaridDetect(car_pic):
             M = cv2.getPerspectiveTransform(rect_points,target_points)
             car_img = cv2.warpPerspective(oldimg,M,(int(area_width),int(area_height)))
             car_imgs_possibly.append(car_img)
-            cv2.imshow("edge4", car_img)
-            cv2.waitKey(0)
+            # cv2.imshow("edge4", car_img)
+            # cv2.waitKey(0)
+    return car_imgs_possibly
+
+def GetCarid_possible_by_color(car_pic):
+    car_imgs_possibly = GetCarid_possible(car_pic)
+    car_imgs = []
+    colors = []
+    for car_index, card_img in enumerate(car_imgs_possibly):
+        green = yello = blue = black = white = 0
+        card_img_hsv = cv2.cvtColor(card_img, cv2.COLOR_BGR2HSV)
+        # 有转换失败的可能，原因来自于上面矫正矩形出错
+        if card_img_hsv is None:
+            continue
+        row_num, col_num = card_img_hsv.shape[:2]
+        card_img_count = row_num * col_num
+        for i in range(row_num):
+            for j in range(col_num):
+                H = card_img_hsv.item(i, j, 0)
+                S = card_img_hsv.item(i, j, 1)
+                V = card_img_hsv.item(i, j, 2)
+                if 11 < H <= 34 and S > 34:  # 图片分辨率调整
+                    yello += 1
+                elif 35 < H <= 99 and S > 34:  # 图片分辨率调整
+                    green += 1
+                elif 99 < H <= 124 and S > 34:  # 图片分辨率调整
+                    blue += 1
+
+                if 0 < H < 180 and 0 < S < 255 and 0 < V < 46:
+                    black += 1
+                elif 0 < H < 180 and 0 < S < 43 and 221 < V < 225:
+                    white += 1
+        color = "no"
+        limit1 = limit2 = 0
+        if yello * 2 >= card_img_count:
+            color = "yello"
+            limit1 = 11
+            limit2 = 34  # 有的图片有色偏偏绿
+        elif green * 2 >= card_img_count:
+            color = "green"
+            limit1 = 35
+            limit2 = 99
+        elif blue * 2 >= card_img_count:
+            color = "blue"
+            limit1 = 100
+            limit2 = 124  # 有的图片有色偏偏紫
+        elif black + white >= card_img_count * 0.7:  # TODO
+            color = "bw"
+        colors.append(color)
+        if limit1 == 0:
+            continue
+    # 以上为确定车牌颜色
 
 
-CaridDetect('dataset/yello.jpg')
+
+    return car_imgs,colors
+
+
+
+imgs = GetCarid_possible('dataset/wA87271.jpg')
+if imgs:
+    for i, img in enumerate(imgs):
+        cv2.imshow('car_id', img)
+        cv2.waitKey(0)

@@ -221,11 +221,7 @@ def CaridDetect(car_pic):
 			limit2 = 124#有的图片有色偏偏紫
 		elif black + white >= card_img_count*0.7: #TODO
 			color = "bw"
-		# print("[ INFO ] color: {}".format(color))
 		colors.append(color)
-		# print(blue, green, yello, black, white, card_img_count)
-		#cv2.imshow("color", card_img)
-		#cv2.waitKey(0)
 		if limit1 == 0:
 			continue
 		#以上为确定车牌颜色
