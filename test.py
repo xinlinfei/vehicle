@@ -1,12 +1,18 @@
+import os
+
 import cv2
 import numpy as np
 import json
 import tools
 
-SZ = 20          # 训练图片长宽
+SZ = 200         # 训练图片长宽
 MAX_WIDTH = 1000 # 原始图片最大宽度
 Min_Area = 2000  # 车牌区域允许最大面积
 PROVINCE_START = 1000
+
+def GetCarid_img(car_pic):
+    return GetCarid_possible_by_color(car_pic)
+
 def GetCarid_possible(car_pic):#1.矩形区域，2.长宽比
     # 加载图片
     global cfg
@@ -46,7 +52,6 @@ def GetCarid_possible(car_pic):#1.矩形区域，2.长宽比
     kernel = np.ones((cfg["morphologyr"], cfg["morphologyc"]), np.uint8)
     img_edge1 = cv2.morphologyEx(img_edge, cv2.MORPH_CLOSE, kernel)
     img_edge2 = cv2.morphologyEx(img_edge1, cv2.MORPH_OPEN, kernel)
-
     # 查找图像边缘整体形成的矩形区域，可能有很多，车牌就在其中一个矩形区域中
     # cv2.findContours()函数来查找检测物体的轮廓
     try:
@@ -57,6 +62,13 @@ def GetCarid_possible(car_pic):#1.矩形区域，2.长宽比
     # 一一排除不是车牌的矩形区域，找到最小外接矩形的长宽比复合车牌条件的边缘检测到的物体
 
 
+    # for cnt in contours:
+    #     rect = cv2.minAreaRect(cnt)
+    #     box = np.intp(cv2.boxPoints(rect))
+    #     img = cv2.drawContours(img, [box], -1, (0, 255, 0), 3)
+    #     cv2.imshow('img', img)
+    #     cv2.waitKey(0)
+
     car_imgs_possibly = []
     for cnt in contours:
         rect = cv2.minAreaRect(cnt)
@@ -65,15 +77,25 @@ def GetCarid_possible(car_pic):#1.矩形区域，2.长宽比
             area_width, area_height = area_height, area_width
         wh_ratio = area_width / area_height
         # 要求矩形区域长宽比在2到5.5之间，2到5.5是车牌的长宽比，其余的矩形排除 一般的比例是3.5
-        if wh_ratio > 2 and wh_ratio < 5.5:
+        # 后面发现，由于车牌上下边缘有横向的凹槽，因此车牌的长宽比会变大，所以这里的上限定为7
+        if wh_ratio > 2 and wh_ratio < 7:
             rect_points = cv2.boxPoints(rect)
             rect_points = np.float32(rect_points)
             target_points = np.float32([[0,0],[area_width,0],[area_width,area_height],[0,area_height]])
             M = cv2.getPerspectiveTransform(rect_points,target_points)
             car_img = cv2.warpPerspective(oldimg,M,(int(area_width),int(area_height)))
             car_imgs_possibly.append(car_img)
-            # cv2.imshow("edge4", car_img)
-            # cv2.waitKey(0)
+
+            target_points = np.float32([[0, area_height],[0, 0],[area_width, 0], [area_width, area_height]])
+            M = cv2.getPerspectiveTransform(rect_points, target_points)
+            car_img = cv2.warpPerspective(oldimg, M, (int(area_width), int(area_height)))
+            car_imgs_possibly.append(car_img)
+
+            target_points = np.float32([[area_width, 0], [area_width, area_height], [0, area_height],[0, 0]])
+            M = cv2.getPerspectiveTransform(rect_points, target_points)
+            car_img = cv2.warpPerspective(oldimg, M, (int(area_width), int(area_height)))
+            car_imgs_possibly.append(car_img)
+
     return car_imgs_possibly
 
 def GetCarid_possible_by_color(car_pic):
@@ -106,15 +128,15 @@ def GetCarid_possible_by_color(car_pic):
                     white += 1
         color = "no"
         limit1 = limit2 = 0
-        if yello * 2 >= card_img_count:
+        if yello * 2.5 >= card_img_count:
             color = "yello"
             limit1 = 11
             limit2 = 34  # 有的图片有色偏偏绿
-        elif green * 2 >= card_img_count:
+        elif green * 2.5 >= card_img_count:
             color = "green"
             limit1 = 35
             limit2 = 99
-        elif blue * 2 >= card_img_count:
+        elif blue * 2.5 >= card_img_count:
             color = "blue"
             limit1 = 100
             limit2 = 124  # 有的图片有色偏偏紫
@@ -123,27 +145,25 @@ def GetCarid_possible_by_color(car_pic):
         if limit1 == 0:
             continue
         colors.append(color)
-        # 以上为确定车牌颜色
-
-        xl, xr, yh, yl = tools.accurate_place(card_img_hsv, limit1, limit2, color, cfg)
-        if yl == yh and xl == xr:
-            continue
-        need_accurate = False
-        if yl >= yh:
-            yl = 0
-            yh = row_num
-            need_accurate = True
-        if xl >= xr:
-            xl = 0
-            xr = col_num
-            need_accurate = True
-        card_imgs.append(card_img[yl:yh, xl:xr] if color != "green" or yl < (yh - yl) // 4 else card_img[yl - (yh - yl) // 4:yh, xl:xr])
+        card_imgs.append(card_img)
     return card_imgs,colors
 
 
-imgs,colors= GetCarid_possible_by_color('dataset/wAUB816.jpg')
-print(len(imgs),len(colors))
-if imgs:
-    for i, img in enumerate(imgs):
-        cv2.imshow('car_id', img)
-        cv2.waitKey(0)
+if __name__ == "__main__" :
+    # imgs,_ = GetCarid_possible_by_color("dataset/8.jpg")
+    # if imgs :
+    #     for img in imgs:
+    #         cv2.imshow("img",img)
+    #         cv2.waitKey(0)
+    # else :
+    #     print("no car id in this pic")
+    for path in os.listdir("dataset"):
+        path = os.path.join("dataset",path)
+        imgs,_ = GetCarid_possible_by_color(path)
+        if imgs :
+            for img in imgs:
+                cv2.imshow("img",img)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+        else:
+            print("no car id in this pic",path)
