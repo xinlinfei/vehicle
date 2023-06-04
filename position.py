@@ -81,8 +81,6 @@ def CaridDetect(car_pic):
 		img = cv2.GaussianBlur(img, (blur, blur), 0) #图片分辨率调整
 	oldimg = img
 	img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-	#equ = cv2.equalizeHist(img)
-	#img = np.hstack((img, equ))
 	# 去掉图像中不会是车牌的区域
 	kernel = np.ones((20, 20), np.uint8)
 	# morphologyEx 形态学变化函数
@@ -106,20 +104,11 @@ def CaridDetect(car_pic):
 	except ValueError:
 		image, contours, hierarchy = cv2.findContours(img_edge2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	contours = [cnt for cnt in contours if cv2.contourArea(cnt) > Min_Area]
-	# print('[ INFO ] len(contours): {}'.format(len(contours)))
 	
 	# 一一排除不是车牌的矩形区域，找到最小外接矩形的长宽比复合车牌条件的边缘检测到的物体
 	car_contours = []
 	for cnt in contours:
 		rect = cv2.minAreaRect(cnt) 
-		# 生成最小外接矩形，点集 cnt 存放的就是该四边形的4个顶点坐标（点集里面有4个点）
-		# 函数 cv2.minAreaRect() 返回一个Box2D结构rect：（最小外接矩形的中心（x，y），（宽度，高度），旋转角度），
-		# 但是要绘制这个矩形，我们需要矩形的4个顶点坐标box, 通过函数 cv2.boxPoints() 获得，
-		# 返回形式[ [x0,y0], [x1,y1], [x2,y2], [x3,y3] ]。
-
-		# 得到的最小外接矩形的4个顶点顺序、中心坐标、宽度、高度、旋转角度（是度数形式，不是弧度数）
-		# https://blog.csdn.net/lanyuelvyun/article/details/76614872
-
 		area_width, area_height = rect[1]
 		if area_width < area_height:
 			area_width, area_height = area_height, area_width
@@ -128,59 +117,12 @@ def CaridDetect(car_pic):
 		# 要求矩形区域长宽比在2到5.5之间，2到5.5是车牌的长宽比，其余的矩形排除 一般的比例是3.5
 		if wh_ratio > 2 and wh_ratio < 5.5:
 			car_contours.append(rect)
-			box = cv2.boxPoints(rect)
-			box = np.int0(box)
+			# box = cv2.boxPoints(rect)
+			# box = np.int0(box)
 			# oldimg = cv2.drawContours(oldimg, [box], 0, (0, 0, 255), 2)
 			# cv2.imshow("edge4", oldimg)
 			# print(rect)
 			# cv2.waitKey(0)
-
-
-
-	car_imgs_test = []
-	for rect in car_contours:
-		center, size, angle = rect
-		print(angle)
-		# 提取矩形的宽度和高度
-		width = int(size[0])
-		height = int(size[1])
-
-
-		if rect[2] > -1 and rect[2] < 1:#创造角度，使得左高右低拿到正确的值
-			angle = 1
-		else:
-			angle = rect[2]
-		rect = (rect[0], (rect[1][0]+5, rect[1][1]+5), angle)
-		# 检查角度，确保在-90度到0度范围内
-		# if angle < -45:
-		# 	angle += 90
-		# elif angle > 45:
-		# 	angle -= 90
-
-		# 获取旋转矩形的旋转矩阵
-		M = cv2.getRotationMatrix2D(center, angle, 1.0)
-
-		# 计算输出图像的尺寸
-		cos = np.abs(M[0, 0])
-		sin = np.abs(M[0, 1])
-		new_width = int((height * sin) + (width * cos))
-		new_height = int((height * cos) + (width * sin))
-
-		# 调整旋转矩阵的平移距离
-		M[0, 2] += (new_width / 2) - center[0]
-		M[1, 2] += (new_height / 2) - center[1]
-
-		# 应用仿射变换
-		rotated = cv2.warpAffine(oldimg, M, (new_width, new_height), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-		car_imgs_test.append(rotated)
-	for img_test in car_imgs_test:
-		cv2.imshow("img_test", img_test)
-		cv2.waitKey(0)
-
-
-
-
-
 	card_imgs = []
 
 	# 矩形区域可能是倾斜的矩形，需要矫正，以便使用颜色定位更加精确
@@ -229,10 +171,9 @@ def CaridDetect(car_pic):
 			point_limit(new_left_point)
 			card_img = dst[int(right_point[1]):int(heigth_point[1]), int(new_left_point[0]):int(right_point[0])]
 			card_imgs.append(card_img)
-	# for carimg in card_imgs:
-	# 	cv2.imshow("card", carimg)
-	# 	cv2.waitKey(0)
-	# print(len(card_imgs))
+	for carimg in card_imgs:
+		cv2.imshow("card", carimg)
+		cv2.waitKey(0)
 
 	# 开始使用颜色定位，排除不是车牌的矩形，目前只识别蓝、绿、黄车牌
 	colors = []
@@ -327,8 +268,8 @@ def CaridDetect(car_pic):
 	return roi,labels, card_color#定位的车牌图像、车牌颜色
 
 if __name__ == '__main__':
-	# roi, label, color = CaridDetect("green.jpg")
-	roi, label, color = CaridDetect("2.jpg")
+	roi, label, color = CaridDetect("green.jpg")
+	# roi, label, color = CaridDetect("2.jpg")
 	# roi, label,color = CaridDetect("green.jpg")
 	# print(len(roi), len(label), len(color))
 	# print(label[0])
