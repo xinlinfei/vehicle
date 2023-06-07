@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 import json
-import tools
+import myTools
 
 SZ = 200         # 训练图片长宽
 MAX_WIDTH = 1000 # 原始图片最大宽度
