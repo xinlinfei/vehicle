@@ -5,15 +5,21 @@ import numpy as np
 import json
 import myTools
 
-SZ = 200         # 训练图片长宽
-MAX_WIDTH = 1000 # 原始图片最大宽度
+MAX_WIDTH = 1000  # 原始图片最大宽度
 Min_Area = 2000  # 车牌区域允许最大面积
-PROVINCE_START = 1000
+
+COLORMAP = {
+    "blue": (255, 0, 0),
+    "yellow": (0, 255, 255),
+    "green": (0, 255, 0),
+}
+
 
 def GetCarid_img(car_pic):
     return GetCarid_possible_by_color(car_pic)
 
-def GetCarid_possible(car_pic):#1.矩形区域，2.长宽比
+
+def GetCarid_possible(car_pic):  # 1.矩形区域，2.长宽比
     # 加载图片
     global cfg
     img = cv2.imread(car_pic)
@@ -59,16 +65,8 @@ def GetCarid_possible(car_pic):#1.矩形区域，2.长宽比
     except ValueError:
         image, contours, hierarchy = cv2.findContours(img_edge2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = [cnt for cnt in contours if cv2.contourArea(cnt) > Min_Area]
+
     # 一一排除不是车牌的矩形区域，找到最小外接矩形的长宽比复合车牌条件的边缘检测到的物体
-
-
-    # for cnt in contours:
-    #     rect = cv2.minAreaRect(cnt)
-    #     box = np.intp(cv2.boxPoints(rect))
-    #     img = cv2.drawContours(img, [box], -1, (0, 255, 0), 3)
-    #     cv2.imshow('img', img)
-    #     cv2.waitKey(0)
-
     car_imgs_possibly = []
     for cnt in contours:
         rect = cv2.minAreaRect(cnt)
@@ -77,33 +75,25 @@ def GetCarid_possible(car_pic):#1.矩形区域，2.长宽比
             area_width, area_height = area_height, area_width
         wh_ratio = area_width / area_height
         # 要求矩形区域长宽比在2到5.5之间，2到5.5是车牌的长宽比，其余的矩形排除 一般的比例是3.5
-        # 后面发现，由于车牌上下边缘有横向的凹槽，因此车牌的长宽比会变大，所以这里的上限定为7
-        if wh_ratio > 2 and wh_ratio < 7:
+        # 后面发现，由于车牌上下边缘有横向的凹槽，因此车牌的长宽比会变大，所以这里的上限定为6
+        if wh_ratio > 2 and wh_ratio < 6:
             rect_points = cv2.boxPoints(rect)
+            # 做了正负90°的纠正
+            rect_points = myTools.GetCorrectNumpyArray(rect_points, rect[0])
             rect_points = np.float32(rect_points)
-            target_points = np.float32([[0,0],[area_width,0],[area_width,area_height],[0,area_height]])
-            M = cv2.getPerspectiveTransform(rect_points,target_points)
-            car_img = cv2.warpPerspective(oldimg,M,(int(area_width),int(area_height)))
-            car_imgs_possibly.append(car_img)
-
-            target_points = np.float32([[0, area_height],[0, 0],[area_width, 0], [area_width, area_height]])
+            target_points = np.float32([[0, 0], [area_width, 0], [area_width, area_height], [0, area_height]])
             M = cv2.getPerspectiveTransform(rect_points, target_points)
             car_img = cv2.warpPerspective(oldimg, M, (int(area_width), int(area_height)))
             car_imgs_possibly.append(car_img)
-
-            target_points = np.float32([[area_width, 0], [area_width, area_height], [0, area_height],[0, 0]])
-            M = cv2.getPerspectiveTransform(rect_points, target_points)
-            car_img = cv2.warpPerspective(oldimg, M, (int(area_width), int(area_height)))
-            car_imgs_possibly.append(car_img)
-
     return car_imgs_possibly
+
 
 def GetCarid_possible_by_color(car_pic):
     car_imgs_possibly = GetCarid_possible(car_pic)
     card_imgs = []
     colors = []
     for card_index, card_img in enumerate(car_imgs_possibly):
-        green = yello = blue = black = white = 0
+        green = yello = blue = 0
         card_img_hsv = cv2.cvtColor(card_img, cv2.COLOR_BGR2HSV)
         # 有转换失败的可能，原因来自于上面矫正矩形出错
         if card_img_hsv is None:
@@ -115,55 +105,53 @@ def GetCarid_possible_by_color(car_pic):
                 H = card_img_hsv.item(i, j, 0)
                 S = card_img_hsv.item(i, j, 1)
                 V = card_img_hsv.item(i, j, 2)
-                if 11 < H <= 34 and S > 34:  # 图片分辨率调整
+                if 11 < H <= 34 < S:
                     yello += 1
-                elif 35 < H <= 99 and S > 34:  # 图片分辨率调整
+                elif 35 < H <= 99 and S > 34:
                     green += 1
-                elif 99 < H <= 124 and S > 34:  # 图片分辨率调整
+                elif 99 < H <= 124 and S > 34:
                     blue += 1
-
-                if 0 < H < 180 and 0 < S < 255 and 0 < V < 46:
-                    black += 1
-                elif 0 < H < 180 and 0 < S < 43 and 221 < V < 225:
-                    white += 1
         color = "no"
-        limit1 = limit2 = 0
         if yello * 2.5 >= card_img_count:
-            color = "yello"
-            limit1 = 11
-            limit2 = 34  # 有的图片有色偏偏绿
+            color = "yellow"
         elif green * 2.5 >= card_img_count:
             color = "green"
-            limit1 = 35
-            limit2 = 99
         elif blue * 2.5 >= card_img_count:
             color = "blue"
-            limit1 = 100
-            limit2 = 124  # 有的图片有色偏偏紫
-        elif black + white >= card_img_count * 0.7:  # TODO
-            color = "bw"
-        if limit1 == 0:
+        else:
             continue
         colors.append(color)
         card_imgs.append(card_img)
-    return card_imgs,colors
+    return card_imgs, colors
 
 
-if __name__ == "__main__" :
-    # imgs,_ = GetCarid_possible_by_color("dataset/8.jpg")
-    # if imgs :
-    #     for img in imgs:
-    #         cv2.imshow("img",img)
-    #         cv2.waitKey(0)
-    # else :
-    #     print("no car id in this pic")
+def GetCaridBySplit(car_pic):
+    card_imgs_possible = GetCarid_possible(car_pic)
+    card_imgs = []
+    colors = []
+    for card_img in card_imgs_possible:
+        iscardid, color = myTools.SplitImgForRecognize(card_img)
+        if iscardid:
+            card_imgs.append(card_img)
+            colors.append(color)
+    return card_imgs, colors
+
+
+if __name__ == "__main__":
+    count=1
     for path in os.listdir("dataset"):
-        path = os.path.join("dataset",path)
-        imgs,_ = GetCarid_possible_by_color(path)
-        if imgs :
-            for img in imgs:
-                cv2.imshow("img",img)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
+        path = os.path.join("dataset", path)
+        # imgs, colors = GetCarid_possible_by_color(path)
+        imgs, colors = GetCaridBySplit(path)
+        if imgs:
+            for index in range(len(imgs)):
+                print("color:", colors[index], path, count)
+                count+=1
+                cv2.imshow("img", imgs[index])
+                cv2.waitKey(500)
+                # addtextimg = cv2.putText(imgs[index], colors[index], (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1,
+                #                          COLORMAP[colors[index]], 2)
+                # cv2.imshow("img", addtextimg)
+                # cv2.waitKey(0)
         else:
-            print("no car id in this pic",path)
+            print("no car id in this pic", path)
