@@ -47,7 +47,7 @@ def SplitImgForRecognize(img):
         for j in range(col):
             if visted[i, j] == False:
                 h, s, v = getHSVAvg(blocks[i, j])
-                if h > 11 and h <= 124:
+                if (100 < h < 124 or 26 < h < 34 or 35 < h < 77) and 43 < s < 255 and 46 < v < 255:
                     visted[i, j] = True
                     q.put((i, j))
                     count = 1
@@ -58,38 +58,38 @@ def SplitImgForRecognize(img):
                             x, y = q.get()
                             if x - 1 >= 0 and visted[x - 1, y] == False:
                                 h1, s1, v1 = getHSVAvg(blocks[x - 1, y])
-                                if h1-h<6 and h1-h>-6:
+                                if 6 > h1 - h > -6:
                                     visted[x - 1, y] = True
                                     q.put((x - 1, y))
                                     count += 1
                             if x + 1 < row and visted[x + 1, y] == False:
                                 h1, s1, v1 = getHSVAvg(blocks[x + 1, y])
-                                if h1-h<6 and h1-h>-6:
+                                if 6 > h1 - h > -6:
                                     visted[x + 1, y] = True
                                     q.put((x + 1, y))
                                     count += 1
                             if y - 1 >= 0 and visted[x, y - 1] == False:
                                 h1, s1, v1 = getHSVAvg(blocks[x, y - 1])
-                                if h1-h<6 and h1-h>-6:
+                                if 6 > h1 - h > -6:
                                     visted[x, y - 1] = True
                                     q.put((x, y - 1))
                                     count += 1
                             if y + 1 < col and visted[x, y + 1] == False:
                                 h1, s1, v1 = getHSVAvg(blocks[x, y + 1])
-                                if h1-h<6 and h1-h>-6:
+                                if 6 > h1 - h > -6:
                                     visted[x, y + 1] = True
                                     q.put((x, y + 1))
                                     count += 1
-                    if count >=blocks_count*0.5:
-                        if 11<h<=34<s:
-                            return True,"yellow"
-                        elif 35<h<=99 and s>34:
-                            return True,"green"
-                        elif 99<h<=124 and s>34:
-                            return True,"blue"
+                    if count >= blocks_count * 0.5:
+                        if 26 < h <= 34:
+                            return True, "yellow"
+                        elif 35 < h <= 77:
+                            return True, "green"
+                        elif 100 < h <= 124:
+                            return True, "blue"
                 else:
                     visted[i, j] = True
-    return False,"none"
+    return False, "none"
 
 
 def splitImg(image, block_size):

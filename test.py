@@ -146,12 +146,12 @@ if __name__ == "__main__":
         if imgs:
             for index in range(len(imgs)):
                 print("color:", colors[index], path, count)
-                count+=1
                 cv2.imshow("img", imgs[index])
-                cv2.waitKey(500)
+                cv2.waitKey(0)
                 # addtextimg = cv2.putText(imgs[index], colors[index], (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1,
                 #                          COLORMAP[colors[index]], 2)
                 # cv2.imshow("img", addtextimg)
                 # cv2.waitKey(0)
         else:
-            print("no car id in this pic", path)
+            print("no car id in this pic", path,count)
+        count+=1
