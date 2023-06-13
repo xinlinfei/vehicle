@@ -10,13 +10,13 @@ def detect(pic_img):
     for img in imgs:
         result = ocr.ocr(img, cls=True, det=False)
         for line in result:
-            carid.append(line[1][0])
+            carid.append(line[0][0])
     return imgs, colors, carid
 
 
 if __name__ == "__main__":
     imgs, colors, carid = detect("dataset/2.jpg")
     for i in range(len(imgs)):
+        print(carid)
         cv2.imshow(colors[i], imgs[i])
         cv2.waitKey(0)
-        print(carid)
