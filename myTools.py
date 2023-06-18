@@ -4,7 +4,7 @@ from queue import Queue
 
 
 # 做了正负90°的纠正
-def GetCorrectNumpyArray(pointarr, center):
+def GetCorrectNumpyArray(pointarr):
     # 如果没有旋转:
     if pointarr[0][1] == pointarr[1][1] or pointarr[0][0] == pointarr[2][0]:
         return pointarr

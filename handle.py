@@ -79,7 +79,7 @@ def GetCarid_possible(car_pic):  # 1.矩形区域，2.长宽比
         if wh_ratio > 2 and wh_ratio < 6:
             rect_points = cv2.boxPoints(rect)
             # 做了正负90°的纠正
-            rect_points = myTools.GetCorrectNumpyArray(rect_points, rect[0])
+            rect_points = myTools.GetCorrectNumpyArray(rect_points)
             rect_points = np.float32(rect_points)
             target_points = np.float32([[0, 0], [area_width, 0], [area_width, area_height], [0, area_height]])
             M = cv2.getPerspectiveTransform(rect_points, target_points)
