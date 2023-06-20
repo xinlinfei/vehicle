@@ -15,11 +15,11 @@ COLORMAP = {
 }
 
 
-def GetCarid_img(car_pic):
-    return GetCarid_possible_by_color(car_pic)
+def GetCaridImg(car_pic):
+    return GetCaridPossibleByColor(car_pic)
 
 
-def GetCarid_possible(car_pic):  # 1.矩形区域，2.长宽比
+def GetCaridPossible(car_pic):  # 1.矩形区域，2.长宽比
     # 加载图片
     global cfg
     img = cv2.imread(car_pic)
@@ -88,8 +88,8 @@ def GetCarid_possible(car_pic):  # 1.矩形区域，2.长宽比
     return car_imgs_possibly
 
 
-def GetCarid_possible_by_color(car_pic):
-    car_imgs_possibly = GetCarid_possible(car_pic)
+def GetCaridPossibleByColor(car_pic):
+    car_imgs_possibly = GetCaridPossible(car_pic)
     card_imgs = []
     colors = []
     for card_index, card_img in enumerate(car_imgs_possibly):
@@ -126,7 +126,7 @@ def GetCarid_possible_by_color(car_pic):
 
 
 def GetCaridBySplit(car_pic):
-    card_imgs_possible = GetCarid_possible(car_pic)
+    card_imgs_possible = GetCaridPossible(car_pic)
     card_imgs = []
     colors = []
     for card_img in card_imgs_possible:
